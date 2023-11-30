@@ -1,8 +1,8 @@
 #include <stdio.h>
 
-#define ROW_CNT (1024)
+#define ROW_CNT (512)
 #define OCT_CNT (80)
-#define DBG(x) 
+#define DBG(x) x
 
 #define SCRAMBLE(VRA, COEFF) (((VRA)*(COEFF))%ROW_CNT)
 
@@ -71,7 +71,10 @@ int main()
     DBG(print_RAs("V0-0:PRAs", v0_0_PRAs);)
     DBG(print_RAs("V0-1:PRAs", v0_1_PRAs);)
 
-    for (ROW_ADDR_t a1_VRA = 0; (a1_VRA<ROW_CNT); a1_VRA++) {
+    ROW_ADDR_t a1 = 61;
+    ROW_ADDR_t a2 = 78;
+
+    for (ROW_ADDR_t a1_VRA = a1; (a1_VRA<=a1); a1_VRA++) {
         get_PRAs(a1_VRA, a1_PRAs);
 
         DBG(printf("Agg1:VRA %d\n", a1_VRA);)
@@ -83,7 +86,7 @@ int main()
         DBG(print_RAs("V1-0:PRAs", v1_0_PRAs);)
         DBG(print_RAs("V1-1:PRAs", v1_1_PRAs);)
 
-        for (ROW_ADDR_t a2_VRA = 0; (a2_VRA<ROW_CNT); a2_VRA++) {
+        for (ROW_ADDR_t a2_VRA = a2; (a2_VRA<=a2); a2_VRA++) {
             get_PRAs(a2_VRA, a2_PRAs);
 
             DBG(printf("Agg2:VRA %d\n", a2_VRA);)
@@ -110,7 +113,7 @@ int main()
                 }
                 if (error_cnt>1) {
                     conflict_cnt++;
-                    DBG(printf("Error count: %d\n", error_cnt);)
+                    DBG(printf("Error count: %d - location: %d %d\n", error_cnt, error_locations[0], error_locations[1]);)
                     if (error_cnt>2) {
                         /*
                         printf("Why?\n");
