@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #define ROW_CNT (1024)
+//#define ROW_CNT (512)
 #define OCT_CNT (80)
 #define DBG(x) 
 
@@ -18,6 +19,18 @@ unsigned int coeffs[] = {  1,   3,   5,  15,   7,  21,  11,  33,  // chip0
                           77, 231,  79, 237,  83, 249,  85, 255,  // chip7
                           89, 267,  91, 273,  95, 285,  97, 291,  // chip8
                          101, 303, 103, 309, 107, 321, 109, 327}; // chip9
+
+// inverse coefficients
+unsigned int incoeffs[] = {  1,   3,   5,  15,   7,  21,  11,  33,  // chip0
+                            13,  39,  17,  51,  19,  57,  23,  69,  // chip1
+                            25,  75,  27,  81,  29,  87,  31,  93,  // chip2
+                            35, 105,  37, 111,  41, 123,  43, 129,  // chip3
+                            45, 135,  47, 141,  49, 147,  53, 159,  // chip4
+                            55, 165,  59, 177,  61, 183,  63, 189,  // chip5
+                            65, 195,  67, 201,  71, 213,  73, 219,  // chip6
+                            77, 231,  79, 237,  83, 249,  85, 255,  // chip7
+                            89, 267,  91, 273,  95, 285,  97, 291,  // chip8
+                           101, 303, 103, 309, 107, 321, 109, 327}; // chip9
 
 
 ROW_ADDR_t a0_VRA;
@@ -38,6 +51,12 @@ ROW_ADDR_t a2_PRAs[OCT_CNT];
 ROW_ADDR_t v2_0_PRAs[OCT_CNT];
 ROW_ADDR_t v2_1_PRAs[OCT_CNT];
 
+ROW_ADDR_t a3_VRA;
+ROW_ADDR_t a3_PRAs[OCT_CNT];
+
+ROW_ADDR_t v3_0_PRAs[OCT_CNT];
+ROW_ADDR_t v3_1_PRAs[OCT_CNT];
+
 void get_PRAs(ROW_ADDR_t vra, ROW_ADDR_t *pras)
 {
     for (int i=0; i<OCT_CNT; i++) {
@@ -56,7 +75,7 @@ void print_RAs(char *header, ROW_ADDR_t *ras)
 
 int main()
 {
-    unsigned int    conflict_cnt = 0;
+    unsigned long long  conflict_cnt[16] = {0, };
 
     a0_VRA = 0;
     get_PRAs(a0_VRA, a0_PRAs);
@@ -95,51 +114,66 @@ int main()
             DBG(print_RAs("V2-0:PRAs", v2_0_PRAs);)
             DBG(print_RAs("V2-1:PRAs", v2_1_PRAs);)
 
-            // check
-            for (int vra=0; vra<ROW_CNT; vra++) {
-                unsigned error_cnt = 0;
-                int error_locations[] = {-1, -1, -1, -1, -1, -1, -1};
-                for (int j=0; j<OCT_CNT; j++) {
-                    ROW_ADDR_t  pra = SCRAMBLE(vra, coeffs[j]);
-                    if (  (pra==v0_0_PRAs[j])
-                        ||(pra==v0_1_PRAs[j])
-                        ||(pra==v1_0_PRAs[j])
-                        ||(pra==v1_1_PRAs[j])
-                        ||(pra==v2_0_PRAs[j])
-                        ||(pra==v2_1_PRAs[j])) { error_locations[error_cnt++] = j; }
+            for (ROW_ADDR_t a3_VRA = 0; (a3_VRA<ROW_CNT); a3_VRA++) {
+                get_PRAs(a3_VRA, a3_PRAs);
+
+                DBG(printf("Agg3:VRA %d\n", a3_VRA);)
+                DBG(print_RAs("Agg3:PRAs", a3_PRAs);)
+                for (int i=0; i<OCT_CNT; i++) {
+                    v3_0_PRAs[i] = (a3_PRAs[i]-1)%ROW_CNT;
+                    v3_1_PRAs[i] = (a3_PRAs[i]+1)%ROW_CNT;
                 }
-                if (error_cnt>1) {
-                    conflict_cnt++;
-                    DBG(printf("Error count: %d\n", error_cnt);)
-                    if (error_cnt>2) {
-                        /*
-                        printf("Why?\n");
-                        printf("Error VRA: %d\n", vra);
-                        printf("%d %d %d %d %d\n",
-                                        error_locations[0],
-                                        error_locations[1],
-                                        error_locations[2],
-                                        error_locations[3],
-                                        error_locations[4]);
-                        printf("%d %d %d %d %d\n",
-                                        (error_locations[0]>=0) ? coeffs[error_locations[0]] : -1,
-                                        (error_locations[1]>=0) ? coeffs[error_locations[1]] : -1,
-                                        (error_locations[2]>=0) ? coeffs[error_locations[2]] : -1,
-                                        (error_locations[3]>=0) ? coeffs[error_locations[3]] : -1,
-                                        (error_locations[4]>=0) ? coeffs[error_locations[4]] : -1);
-                        printf("Agg0:VRA %d\n", a0_VRA);
-                        print_RAs("Agg0:PRA", a0_PRAs);
-    
-                        printf("Agg1:VRA %d\n", a1_VRA);
-                        print_RAs("Agg1:PRA", a1_PRAs);
-                        */
+                DBG(print_RAs("V3-0:PRAs", v3_0_PRAs);)
+                DBG(print_RAs("V3-1:PRAs", v3_1_PRAs);)
+
+                // check
+                for (int vra=0; vra<ROW_CNT; vra++) {
+                    unsigned word_error_cnt = 0;
+                    int error_locations[] = {-1, -1, -1, -1, -1, -1, -1};
+                    for (int j=0; j<OCT_CNT; j++) {
+                        ROW_ADDR_t  pra = SCRAMBLE(vra, coeffs[j]);
+                        if (  (pra==v0_0_PRAs[j])
+                            ||(pra==v0_1_PRAs[j])
+                            ||(pra==v1_0_PRAs[j])
+                            ||(pra==v1_1_PRAs[j])
+                            ||(pra==v2_0_PRAs[j])
+                            ||(pra==v2_1_PRAs[j])
+                            ||(pra==v3_0_PRAs[j])
+                            ||(pra==v3_1_PRAs[j])) { error_locations[word_error_cnt++] = j; }
                     }
+                    conflict_cnt[word_error_cnt]++;
+                    DBG(printf("Error count: %d\n", word_error_cnt);)
+                /*
+                if (word_error_cnt>2) {
+                    printf("Why?\n");
+                    printf("Error VRA: %d\n", vra);
+                    printf("%d %d %d %d %d\n",
+                                    error_locations[0],
+                                    error_locations[1],
+                                    error_locations[2],
+                                    error_locations[3],
+                                    error_locations[4]);
+                    printf("%d %d %d %d %d\n",
+                                    (error_locations[0]>=0) ? coeffs[error_locations[0]] : -1,
+                                    (error_locations[1]>=0) ? coeffs[error_locations[1]] : -1,
+                                    (error_locations[2]>=0) ? coeffs[error_locations[2]] : -1,
+                                    (error_locations[3]>=0) ? coeffs[error_locations[3]] : -1,
+                                    (error_locations[4]>=0) ? coeffs[error_locations[4]] : -1);
+                    printf("Agg0:VRA %d\n", a0_VRA);
+                    print_RAs("Agg0:PRA", a0_PRAs);
+
+                    printf("Agg1:VRA %d\n", a1_VRA);
+                    print_RAs("Agg1:PRA", a1_PRAs);
+                }
+                */
                 }
             }
-            DBG(printf("%d %d %d\n", a0_VRA, a1_VRA, a2_VRA);)
+            //printf("%d %d %d\n", a0_VRA, a1_VRA, a2_VRA);
         }
         printf("%d %d %d\n", a0_VRA, a1_VRA, a2_VRA);
-        printf("Conflict count: %d\n\n", conflict_cnt);
+        for (int i=0; i<16; i++) {
+            printf("Conflict count: %d: %llu\n", i, conflict_cnt[i]);
+        }
     }
 }
 
